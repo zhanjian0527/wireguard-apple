@@ -255,10 +255,11 @@ public class WireGuardAdapter {
 
             do {
                 let settingsGenerator = try self.makeSettingsGenerator(with: tunnelConfiguration)
-                try self.setNetworkSettings(settingsGenerator.generateNetworkSettings())
 
                 switch self.state {
                 case .started(let handle, _):
+                    try self.setNetworkSettings(settingsGenerator.generateNetworkSettings())
+
                     let (wgConfig, resolutionResults) = settingsGenerator.uapiConfiguration()
                     self.logEndpointResolutionResults(resolutionResults)
 
@@ -270,6 +271,11 @@ public class WireGuardAdapter {
                     self.state = .started(handle, settingsGenerator)
 
                 case .temporaryShutdown:
+                    // On iOS 15.1 or newer, updating network settings may fail when in airplane mode.
+                    // Network path monitor will retry updating settings later when connectivity is
+                    // back online.
+                    try? self.setNetworkSettings(settingsGenerator.generateNetworkSettings())
+
                     self.state = .temporaryShutdown(settingsGenerator)
 
                 case .stopped:
